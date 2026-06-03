@@ -2,3 +2,4 @@ recruitment-api/venv/
 recruitment-api/.env 
 pycache/
 *.pyc
+recruitment-api/app/__pycache__/main.cpython-312.pyc
