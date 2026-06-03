@@ -1,2 +1,4 @@
 recruitment-api/venv/  
 recruitment-api/.env 
+pycache/
+*.pyc
