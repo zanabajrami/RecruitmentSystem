@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, Dict
 
 class JobBase(BaseModel):
     title: str
@@ -14,6 +14,7 @@ class JobCreate(JobBase):
 
 class JobResponse(JobBase):
     id: int
+    converted_salaries: Optional[Dict[str, str]] = None
 
     class Config:
         from_attributes = True
