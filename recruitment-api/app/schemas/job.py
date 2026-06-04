@@ -6,6 +6,7 @@ class JobBase(BaseModel):
     description: str
     requirements: Optional[str] = None
     location: str
+    salary: Optional[str] = None
     company_id: int
 
 class JobCreate(JobBase):
