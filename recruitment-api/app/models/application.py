@@ -10,11 +10,14 @@ class Application(Base):
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     job_id = Column(Integer, ForeignKey("jobs.id", ondelete="CASCADE"), nullable=False)
     
-    # Added string column to track the progress of the application
-    status = Column(String(50), default="Pending")  # Pending, Reviewed, Accepted, Rejected
+    resume_url = Column(String(255), nullable=True)
+    status = Column(String(50), default="Pending")
     cover_letter = Column(Text, nullable=True)
+    expected_salary = Column(String(50), nullable=True)
+    experience_years = Column(Integer, nullable=True)
+    notes = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
-    # Database relationships
+    # Relationships
     user = relationship("User", back_populates="applications")
     job = relationship("Job", back_populates="applications")
