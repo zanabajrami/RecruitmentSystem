@@ -1,5 +1,15 @@
-recruitment-api/venv/  
-recruitment-api/.env 
-pycache/
+# Python bytecode cache
+**/__pycache__/
 *.pyc
-recruitment-api/app/__pycache__/main.cpython-312.pyc
+*.pyo
+*.pyd
+
+# Environments
+.env
+venv/
+env/
+ENV/
+
+# IDE files
+.vscode/
+.idea/
