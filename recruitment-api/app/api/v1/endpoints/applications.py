@@ -1,9 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List
 from app.database.session import get_db
 from app.models.application import Application
 from app.schemas.application import ApplicationCreate, ApplicationResponse
+from app.services.ai_service import AIService
 
 router = APIRouter()
 
@@ -19,3 +20,21 @@ def create_application(app_in: ApplicationCreate, db: Session = Depends(get_db))
 def read_applications(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     apps = db.query(Application).offset(skip).limit(limit).all()
     return apps
+
+@router.post("/{application_id}/screen", status_code=status.HTTP_200_OK)
+def screen_application_with_ai(application_id: int, db: Session = Depends(get_db)):
+    """
+    Invoke the AI service to screen the candidate's cover letter/resume
+    and automatically calculate the matching percentage with job requirements.
+    """
+    # Check if the application exists in the database
+    app_exists = db.query(Application).filter(Application.id == application_id).first()
+    if not app_exists:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Application with ID {application_id} not found."
+        )
+        
+    # Initialize the AI service and execute the screening process
+    ai_service = AIService(db)
+    return ai_service.screen_application(application_id=application_id)
