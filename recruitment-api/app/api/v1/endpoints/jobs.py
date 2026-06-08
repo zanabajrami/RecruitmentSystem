@@ -1,42 +1,32 @@
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
+# app/api/v1/endpoints/jobs.py
+from fastapi import APIRouter, Depends, status
 from typing import List
-from app.database.session import get_db
-from app.models.job import Job
+
 from app.schemas.job import JobCreate, JobResponse
-from app.services.currency import CurrencyService
+from app.services.job_service import JobService
+from app.core.dependencies import get_job_service
 
 router = APIRouter()
 
-@router.post("/", response_model=JobResponse)
-async def create_job(job_in: JobCreate, db: Session = Depends(get_db)):
+@router.post("/", response_model=JobResponse, status_code=status.HTTP_201_CREATED)
+async def create_job(
+    job_in: JobCreate, 
+    job_service: JobService = Depends(get_job_service)
+):
     """
-    Create a new job posting and append live currency conversions.
+    Endpoint to create a new job posting.
+    Delegates database entry and currency conversions to the JobService layer.
     """
-    db_job = Job(**job_in.model_dump())
-    db.add(db_job)
-    db.commit()
-    db.refresh(db_job)
-    
-    # Fetch third-party live exchange rates
-    rates = await CurrencyService.get_exchange_rates()
-    # Process conversion asynchronously before returning the response
-    db_job.converted_salaries = CurrencyService.clean_and_convert_salary(db_job.salary, rates)
-    
-    return db_job
+    return await job_service.create_new_job(job_in)
 
 @router.get("/", response_model=List[JobResponse])
-async def read_jobs(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+async def read_jobs(
+    skip: int = 0, 
+    limit: int = 100, 
+    job_service: JobService = Depends(get_job_service)
+):
     """
-    Retrieve a list of job postings with live salary currency conversions.
+    Endpoint to retrieve a paginated list of job postings.
+    Fetches real-time exchange rates and maps currency conversions dynamically.
     """
-    jobs = db.query(Job).offset(skip).limit(limit).all()
-    
-    # Fetch exchange rates once to avoid hitting the external endpoint inside the loop
-    rates = await CurrencyService.get_exchange_rates()
-    
-    # Map converted salary currencies into each job instance object
-    for job in jobs:
-        job.converted_salaries = CurrencyService.clean_and_convert_salary(job.salary, rates)
-        
-    return jobs
+    return await job_service.get_all_jobs(skip=skip, limit=limit)
