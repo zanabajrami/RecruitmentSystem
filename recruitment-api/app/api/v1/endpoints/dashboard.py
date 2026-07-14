@@ -21,9 +21,12 @@ def get_dashboard_stats(db: Session = Depends(get_db)):
     total_candidates = db.query(User).count()
 
     # 2. Group and count applications by status for the Pie/Donut chart
-    status_counts = {"Pending": 0, "Reviewed": 0, "Accepted": 0, "Rejected": 0}
-    for status in status_counts.keys():
-        status_counts[status] = db.query(Application).filter(Application.status == status).count()
+    # Normalized to lowercase database lookup while keeping clean frontend keys
+    status_mapping = {"Pending": "pending", "Reviewed": "reviewed", "Accepted": "accepted", "Rejected": "rejected"}
+    status_counts = {}
+    
+    for display_name, db_status in status_mapping.items():
+        status_counts[display_name] = db.query(Application).filter(Application.status == db_status).count()
 
     # 3. Group and count jobs by location for the Bar chart
     location_counts = {}
