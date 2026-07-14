@@ -13,3 +13,12 @@ ENV/
 # IDE files
 .vscode/
 .idea/
+
+# Database 
+*.db
+*.sqlite
+*.sqlite3
+
+# OS files
+.DS_Store
+Thumbs.db
