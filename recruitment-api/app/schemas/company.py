@@ -1,4 +1,4 @@
-from pydantic import BaseModel, HttpUrl
+from pydantic import BaseModel, ConfigDict  
 from typing import Optional
 
 class CompanyBase(BaseModel):
@@ -12,5 +12,4 @@ class CompanyCreate(CompanyBase):
 class CompanyResponse(CompanyBase):
     id: int
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict  
 from typing import Optional
 from datetime import datetime
 
@@ -18,6 +18,9 @@ class ApplicationResponse(ApplicationBase):
     status: str
     notes: Optional[str] = None
     created_at: datetime
+    
+    # Advanced AI data integration fields
+    ai_match_score: Optional[str] = None
+    recommendation: Optional[str] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

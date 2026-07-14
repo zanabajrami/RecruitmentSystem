@@ -1,10 +1,10 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, ConfigDict  
 from typing import Optional
 
 class UserBase(BaseModel):
     email: EmailStr
     full_name: str
-    role: Optional[str] = "candidate"
+    role: Optional[str] = "candidate"  # Allowed options: candidate, recruiter, admin
 
 class UserCreate(UserBase):
     password: str
@@ -12,8 +12,7 @@ class UserCreate(UserBase):
 class UserResponse(UserBase):
     id: int
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class Token(BaseModel):
     access_token: str
