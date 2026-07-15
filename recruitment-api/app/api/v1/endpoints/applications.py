@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from typing import List
 from app.database.session import get_db
 from app.models.application import Application
-from app.schemas.application import ApplicationCreate, ApplicationResponse
+from app.schemas.application import ApplicationCreate, ApplicationResponse, ApplicationUpdate
 from app.services.ai_service import AIService
 
 router = APIRouter()
@@ -38,3 +38,43 @@ def screen_application_with_ai(application_id: int, db: Session = Depends(get_db
     # Initialize the AI service and execute the screening process
     ai_service = AIService(db)
     return ai_service.screen_application(application_id=application_id)
+
+@router.patch("/{application_id}", response_model=ApplicationResponse)
+def update_application(
+    application_id: int, 
+    app_in: ApplicationUpdate, 
+    db: Session = Depends(get_db)
+):
+    """
+    Update application metadata, candidate status, or administrative notes.
+    """
+    application = db.query(Application).filter(Application.id == application_id).first()
+    if not application:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Application with ID {application_id} not found."
+        )
+        
+    update_data = app_in.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(application, key, value)
+        
+    db.commit()
+    db.refresh(application)
+    return application
+
+@router.delete("/{application_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_application(application_id: int, db: Session = Depends(get_db)):
+    """
+    Withdraw and permanently delete an application.
+    """
+    application = db.query(Application).filter(Application.id == application_id).first()
+    if not application:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Application with ID {application_id} not found."
+        )
+        
+    db.delete(application)
+    db.commit()
+    return None
