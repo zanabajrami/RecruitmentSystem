@@ -18,3 +18,10 @@ class JobResponse(JobBase):
 
     class Config:
         from_attributes = True
+
+class JobUpdate(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    requirements: Optional[str] = None
+    location: Optional[str] = None
+    salary: Optional[str] = None
