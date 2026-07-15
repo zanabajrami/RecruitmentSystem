@@ -24,3 +24,7 @@ class ApplicationResponse(ApplicationBase):
     recommendation: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
+
+class ApplicationUpdate(BaseModel):
+    status: Optional[str] = None 
+    notes: Optional[str] = None
