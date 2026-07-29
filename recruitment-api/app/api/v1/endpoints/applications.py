@@ -11,6 +11,7 @@ from app.services.email_service import send_application_email_task
 
 router = APIRouter()
 
+
 @router.post("/", response_model=ApplicationResponse, status_code=status.HTTP_201_CREATED)
 def create_application(app_in: ApplicationCreate, db: Session = Depends(get_db)):
     """
@@ -22,6 +23,7 @@ def create_application(app_in: ApplicationCreate, db: Session = Depends(get_db))
     db.refresh(db_app)
     return db_app
 
+
 @router.get("/", response_model=List[ApplicationResponse])
 def read_applications(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     """
@@ -29,6 +31,7 @@ def read_applications(skip: int = 0, limit: int = 100, db: Session = Depends(get
     """
     apps = db.query(Application).offset(skip).limit(limit).all()
     return apps
+
 
 @router.post("/{application_id}/upload-resume", status_code=status.HTTP_200_OK)
 async def upload_resume(
@@ -74,12 +77,16 @@ async def upload_resume(
         "resume_url": saved_file_path
     }
 
+
 @router.post("/{application_id}/screen", status_code=status.HTTP_200_OK)
 def screen_application_with_ai(application_id: int, db: Session = Depends(get_db)):
     """
     Invoke the AI service to screen the candidate's cover letter/resume
     and automatically calculate the matching percentage with job requirements.
     """
+    # Importohet brenda funksionit për të parandaluar circular imports
+    from app.models.notification import Notification
+
     application = db.query(Application).filter(Application.id == application_id).first()
     if not application:
         raise HTTPException(
@@ -101,15 +108,24 @@ def screen_application_with_ai(application_id: int, db: Session = Depends(get_db
         score = getattr(result, "ai_match_score", None)
         rec = getattr(result, "recommendation", None)
 
-    # Nëse AI nuk kthen gjë, i vendosim direkt vlerat që kthen shërbimi yt
+    # Vlerat standarde nëse AI kthen None
     if score is None:
         score = "0.0%"
     if rec is None:
         rec = "LOW MATCH: Background keywords do not line up well with job requirements."
 
-    # E përditësojmë aplikimin direkt në DB
+    # Përditësojmë aplikimin
     application.ai_match_score = str(score)
     application.recommendation = str(rec)
+
+    # Krijojmë dhe ruajmë njoftimin në tabelën notifications
+    new_notification = Notification(
+        user_id=application.user_id,
+        title="Rezultati i Screening-ut nga AI",
+        message=f"Aplikimi yt u vlerësua: {score}. Recommendation: {rec}",
+        is_read=False
+    )
+    db.add(new_notification)
 
     db.commit()
     db.refresh(application)
@@ -120,6 +136,7 @@ def screen_application_with_ai(application_id: int, db: Session = Depends(get_db
         "ai_match_score": application.ai_match_score,
         "recommendation": application.recommendation
     }
+
 
 @router.patch("/{application_id}", response_model=ApplicationResponse)
 def update_application(
@@ -144,6 +161,7 @@ def update_application(
     db.commit()
     db.refresh(application)
     return application
+
 
 @router.delete("/{application_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_application(application_id: int, db: Session = Depends(get_db)):
