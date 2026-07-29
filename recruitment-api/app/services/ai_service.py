@@ -25,7 +25,6 @@ class AIService:
         cv_words = re.findall(r'\w+', cover_letter.lower())
 
         # Filter out short grammatical particles, connectors, and short words (length < 4)
-        # This automatically excludes words like: me, ne, te, per, and, the, for, with
         important_job_keywords = {word for word in job_words if len(word) >= 4}
         important_cv_keywords = {word for word in cv_words if len(word) >= 4}
 
@@ -40,7 +39,7 @@ class AIService:
     def screen_application(self, application_id: int) -> dict:
         """
         Processes candidate applications, cross-references with target jobs,
-        evaluates keyword compatibility, and generates a structured fit recommendation.
+        evaluates keyword compatibility, generates recommendations, and SAVES to DB.
         """
         # Fetch application record directly from the database session
         application = self.db.query(Application).filter(Application.id == application_id).first()
@@ -68,9 +67,17 @@ class AIService:
         else:
             recommendation = "LOW MATCH: Background keywords do not line up well with job requirements."
 
+        score_str = f"{match_score}%"
+
+        # Save directly to application model in Database
+        application.ai_match_score = score_str
+        application.recommendation = recommendation
+        self.db.commit()
+        self.db.refresh(application)
+
         return {
             "application_id": application_id,
             "candidate_id": application.user_id,
-            "ai_match_score": f"{match_score}%",
+            "ai_match_score": score_str,
             "recommendation": recommendation
         }
