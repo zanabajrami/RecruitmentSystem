@@ -41,9 +41,10 @@ async def upload_resume(
 ):
     """
     Upload a candidate's resume (PDF/DOCX), update the database record,
-    and trigger a background email notification via Celery.
+    create an in-app notification, and trigger a background email via Celery.
     """
-    # Verify application existence
+    from app.models.notification import Notification
+
     application = db.query(Application).filter(Application.id == application_id).first()
     if not application:
         raise HTTPException(
@@ -56,13 +57,23 @@ async def upload_resume(
 
     # Update resume_url field in the database
     application.resume_url = saved_file_path
-    db.commit()
-    db.refresh(application)
 
-    # Retrieve user and job details for the notification task
+    # Retrieve user and job details
     candidate_email = getattr(application.user, "email", "applicant@example.com")
     candidate_name = getattr(application.user, "full_name", "Applicant")
     job_title = getattr(application.job, "title", "Applied Position")
+
+    # Krijimi i njoftimit në DB për ngarkimin e CV-së
+    new_notification = Notification(
+        user_id=application.user_id,
+        title="CV u ngarkua me sukses",
+        message=f"CV-ja juaj për pozitën '{job_title}' u pranua me sukses.",
+        is_read=False
+    )
+    db.add(new_notification)
+
+    db.commit()
+    db.refresh(application)
 
     # Dispatch background task for sending email notification
     send_application_email_task.delay(
@@ -72,7 +83,7 @@ async def upload_resume(
     )
 
     return {
-        "message": "Resume uploaded successfully and notification email queued.",
+        "message": "Resume uploaded successfully, in-app notification created, and email queued.",
         "application_id": application_id,
         "resume_url": saved_file_path
     }
@@ -84,7 +95,6 @@ def screen_application_with_ai(application_id: int, db: Session = Depends(get_db
     Invoke the AI service to screen the candidate's cover letter/resume
     and automatically calculate the matching percentage with job requirements.
     """
-    # Importohet brenda funksionit për të parandaluar circular imports
     from app.models.notification import Notification
 
     application = db.query(Application).filter(Application.id == application_id).first()
@@ -93,11 +103,10 @@ def screen_application_with_ai(application_id: int, db: Session = Depends(get_db
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Application with ID {application_id} not found."
         )
-        
+
     ai_service = AIService(db)
     result = ai_service.screen_application(application_id=application_id)
 
-    # Nxjerrim vlerat nga rezultati i AI
     score = None
     rec = None
 
@@ -108,17 +117,15 @@ def screen_application_with_ai(application_id: int, db: Session = Depends(get_db
         score = getattr(result, "ai_match_score", None)
         rec = getattr(result, "recommendation", None)
 
-    # Vlerat standarde nëse AI kthen None
     if score is None:
         score = "0.0%"
     if rec is None:
         rec = "LOW MATCH: Background keywords do not line up well with job requirements."
 
-    # Përditësojmë aplikimin
     application.ai_match_score = str(score)
     application.recommendation = str(rec)
 
-    # Krijojmë dhe ruajmë njoftimin në tabelën notifications
+    # Krijimi i njoftimit në DB për AI screening
     new_notification = Notification(
         user_id=application.user_id,
         title="Rezultati i Screening-ut nga AI",
@@ -153,11 +160,11 @@ def update_application(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Application with ID {application_id} not found."
         )
-        
+
     update_data = app_in.model_dump(exclude_unset=True)
     for key, value in update_data.items():
         setattr(application, key, value)
-        
+
     db.commit()
     db.refresh(application)
     return application
@@ -174,7 +181,7 @@ def delete_application(application_id: int, db: Session = Depends(get_db)):
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Application with ID {application_id} not found."
         )
-        
+
     db.delete(application)
     db.commit()
     return None
