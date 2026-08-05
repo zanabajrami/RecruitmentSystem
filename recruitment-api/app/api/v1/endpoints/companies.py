@@ -1,16 +1,25 @@
+from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from typing import List
 
-from app.services.auth_service import get_db 
+from app.core.dependencies import get_db, get_current_user, RoleChecker
 from app.models.company import Company
+from app.models.user import User
 from app.schemas.company import CompanyCreate, CompanyResponse, CompanyUpdate
 from app.repositories.company_repository import CompanyRepository
 
 router = APIRouter()
 
+# Role permissions
+allow_recruiter_or_admin = RoleChecker(["recruiter", "admin"])
+
+
 @router.post("/", response_model=CompanyResponse, status_code=status.HTTP_201_CREATED)
-def create_company(company_in: CompanyCreate, db: Session = Depends(get_db)):
+def create_company(
+    company_in: CompanyCreate, 
+    db: Session = Depends(get_db),
+    current_user: User = Depends(allow_recruiter_or_admin)
+):
     existing_company = CompanyRepository.get_by_name(db, name=company_in.name)
     if existing_company:
         raise HTTPException(
@@ -19,12 +28,24 @@ def create_company(company_in: CompanyCreate, db: Session = Depends(get_db)):
         )
     return CompanyRepository.create(db, company_in=company_in)
 
+
 @router.get("/", response_model=List[CompanyResponse])
-def read_companies(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+def read_companies(
+    skip: int = 0, 
+    limit: int = 100, 
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
     return CompanyRepository.get_all(db, skip=skip, limit=limit)
 
+
 @router.patch("/{company_id}", response_model=CompanyResponse)
-def update_company(company_id: int, company_in: CompanyUpdate, db: Session = Depends(get_db)):
+def update_company(
+    company_id: int, 
+    company_in: CompanyUpdate, 
+    db: Session = Depends(get_db),
+    current_user: User = Depends(allow_recruiter_or_admin)
+):
     """
     Partially update an existing company's details.
     """
@@ -44,8 +65,13 @@ def update_company(company_id: int, company_in: CompanyUpdate, db: Session = Dep
     db.refresh(company)
     return company
 
+
 @router.delete("/{company_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_company(company_id: int, db: Session = Depends(get_db)):
+def delete_company(
+    company_id: int, 
+    db: Session = Depends(get_db),
+    current_user: User = Depends(allow_recruiter_or_admin)
+):
     """
     Remove a company and all its associated listings from the system.
     """

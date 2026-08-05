@@ -2,8 +2,9 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 from sqlalchemy.orm import Session
 
-from app.database.session import get_db
+from app.core.dependencies import get_db, get_current_user, RoleChecker
 from app.models.application import Application
+from app.models.user import User
 from app.schemas.application import ApplicationCreate, ApplicationResponse, ApplicationUpdate
 from app.services.ai_service import AIService
 from app.services.storage_service import storage_service
@@ -11,9 +12,15 @@ from app.services.email_service import send_application_email_task
 
 router = APIRouter()
 
+allow_recruiter_or_admin = RoleChecker(["recruiter", "admin"])
+
 
 @router.post("/", response_model=ApplicationResponse, status_code=status.HTTP_201_CREATED)
-def create_application(app_in: ApplicationCreate, db: Session = Depends(get_db)):
+def create_application(
+    app_in: ApplicationCreate, 
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
     """
     Create a new job application.
     """
@@ -25,7 +32,12 @@ def create_application(app_in: ApplicationCreate, db: Session = Depends(get_db))
 
 
 @router.get("/", response_model=List[ApplicationResponse])
-def read_applications(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+def read_applications(
+    skip: int = 0, 
+    limit: int = 100, 
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
     """
     Retrieve a list of job applications with pagination.
     """
@@ -37,7 +49,8 @@ def read_applications(skip: int = 0, limit: int = 100, db: Session = Depends(get
 async def upload_resume(
     application_id: int,
     file: UploadFile = File(...),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     """
     Upload a candidate's resume (PDF/DOCX), update the database record,
@@ -90,7 +103,11 @@ async def upload_resume(
 
 
 @router.post("/{application_id}/screen", status_code=status.HTTP_200_OK)
-def screen_application_with_ai(application_id: int, db: Session = Depends(get_db)):
+def screen_application_with_ai(
+    application_id: int, 
+    db: Session = Depends(get_db),
+    current_user: User = Depends(allow_recruiter_or_admin)
+):
     """
     Invoke the AI service to screen the candidate's cover letter/resume
     and automatically calculate the matching percentage with job requirements.
@@ -149,7 +166,8 @@ def screen_application_with_ai(application_id: int, db: Session = Depends(get_db
 def update_application(
     application_id: int, 
     app_in: ApplicationUpdate, 
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(allow_recruiter_or_admin)
 ):
     """
     Update application metadata, candidate status, or administrative notes.
@@ -171,7 +189,11 @@ def update_application(
 
 
 @router.delete("/{application_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_application(application_id: int, db: Session = Depends(get_db)):
+def delete_application(
+    application_id: int, 
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
     """
     Withdraw and permanently delete an application.
     """
