@@ -1,6 +1,10 @@
-from pydantic import BaseModel, ConfigDict  
-from typing import Optional
+from pydantic import BaseModel, ConfigDict 
+from typing import Optional, List
 from datetime import datetime
+
+# Import InterviewResponse to include embedded interview details
+from app.schemas.interview import InterviewResponse
+
 
 class ApplicationBase(BaseModel):
     job_id: int
@@ -10,8 +14,10 @@ class ApplicationBase(BaseModel):
     expected_salary: Optional[str] = None
     experience_years: Optional[int] = None
 
+
 class ApplicationCreate(ApplicationBase):
     pass
+
 
 class ApplicationResponse(ApplicationBase):
     id: int
@@ -23,7 +29,11 @@ class ApplicationResponse(ApplicationBase):
     ai_match_score: Optional[str] = None
     recommendation: Optional[str] = None
 
+    # Embedded relationship to return scheduled interviews for this application
+    interviews: List[InterviewResponse] = []
+
     model_config = ConfigDict(from_attributes=True)
+
 
 class ApplicationUpdate(BaseModel):
     status: Optional[str] = None 
