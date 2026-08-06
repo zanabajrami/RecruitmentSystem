@@ -5,7 +5,9 @@ from sqlalchemy.orm import Session
 
 from app.database.session import SessionLocal
 from app.repositories.job_repository import JobRepository
+from app.repositories.user import UserRepository
 from app.services.job_service import JobService
+from app.services.user_service import UserService
 from app.services.ai_service import AIService
 from app.models.user import User
 from app.core.security import verify_token 
@@ -55,6 +57,14 @@ def get_job_repository(db: Session = Depends(get_db)) -> JobRepository:
 
 def get_job_service(repo: JobRepository = Depends(get_job_repository)) -> JobService:
     return JobService(repo)
+
+
+def get_user_repository(db: Session = Depends(get_db)) -> UserRepository:
+    return UserRepository(db)
+
+
+def get_user_service(repo: UserRepository = Depends(get_user_repository)) -> UserService:
+    return UserService(repo)
 
 
 def get_ai_service(db: Session = Depends(get_db)) -> AIService:
